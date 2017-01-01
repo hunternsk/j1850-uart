@@ -3,8 +3,8 @@
  * Auto generated Run-Time-Environment Component Configuration File
  *      *** Do not modify ! ***
  *
- * Project: 'avacl' 
- * Target:  'avacl' 
+ * Project: 'j1850-uart' 
+ * Target:  'j1850-uart:wq' 
  */
 
 #ifndef RTE_COMPONENTS_H
