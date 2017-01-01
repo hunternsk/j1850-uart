@@ -4,7 +4,7 @@
  *      *** Do not modify ! ***
  *
  * Project: 'j1850-uart' 
- * Target:  'j1850-uart:wq' 
+ * Target:  'j1850-uart' 
  */
 
 #ifndef RTE_COMPONENTS_H
