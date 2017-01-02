@@ -51,7 +51,7 @@
 /* USER CODE BEGIN Includes */
 #include "stdbool.h"
 #include "usbd_cdc_if.h"
-#include "sw_pwm.h"
+#include "jnet.h"
 #include "sw_btn.h"
 #include "cb.h"
 
@@ -72,7 +72,10 @@ char usbTransmit[1024];
 uint8_t crcTable[256];
 cb cbSWRxBuffer;
 cb cbSWTxBuffer;
-cb cbUSBRxBuffer;
+
+cb cbCDCRxBuffer;
+bool bCDCRxBufferCplt;
+
 
 /* USER CODE END PV */
 
@@ -123,25 +126,19 @@ int main(void)
 
 	cbInit(&cbSWRxBuffer , 16, sizeof(jFrame));
 	cbInit(&cbSWTxBuffer , 16, sizeof(jFrame));
-	cbInit(&cbUSBRxBuffer, 16, 1);
+	cbInit(&cbCDCRxBuffer, 256, sizeof(uint8_t));
 	
 	struct JFrame jSWRxFrame = {0};
 	struct JFrame jSWTxFrame = {0};
 	uint8_t * jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
-	uint8_t jSWTxFramePtrShift = 4;
 
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2) != HAL_OK) Error_Handler();
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1) != HAL_OK) Error_Handler();
 	
 
 	extern bool bHUReady;
-	bool bTxFrameReady = false;
 	
-	struct JFrame test = {0x64,0x26,0x00,
-		0x00,0x76,0x83,0x00
-	};
-	test.sz = 8;
-	
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -151,28 +148,22 @@ int main(void)
 
   /* USER CODE BEGIN 3 */
 		
-		int len = 0;
+		/*
+		* If something received ftom J_NET 
+		* Pop frame from CB to CDC
+		*/ 
 		if(cbSWRxBuffer.count) {
-			//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-			if (cbPopFront(&cbSWRxBuffer, (uint8_t *)&jSWRxFrame)) { 
-				uint8_t * framePtr = (uint8_t *)&jSWRxFrame;
-				for (int j = 0; j < 3; j++ ) len += sprintf(&usbTransmit[len], "%2X ", *(framePtr + j));
-				len += sprintf(&usbTransmit[len], " | ");
-				for (int j = 3; j < 11; j++) {
-					for(int i = 7; i >= 0 ; i--) {
-						len += sprintf(&usbTransmit[len], "%u", (*(framePtr + j) >> i) & 1);
-					}
-					len += sprintf(&usbTransmit[len], " | ");
-				}
-				len += sprintf(&usbTransmit[len], "\r\n");
-				CDC_Transmit_FS((uint8_t *) usbTransmit, len);
-				
+			if (cbPopFront(&cbSWRxBuffer, (uint8_t *) &jSWRxFrame)) {
+				CDC_Transmit_FS((uint8_t *) &jSWRxFrame, 11); //TODO: jSWRxFrame.sz
 			}
 		}
-		if(!bTxFrameReady && cbUSBRxBuffer.count) {
+		
+		
+		
+		/*if(!bTxFrameReady && cbCDCRxBuffer.count) { 
 			uint8_t rChar;
-			if(cbPopFront(&cbUSBRxBuffer,(uint8_t *) &rChar)) {
-				if(jSWTxFramePtr - (uint8_t *) &jSWTxFrame > 10 || rChar == 0x0D) {
+			if(cbPopFront(&cbCDCRxBuffer,(uint8_t *) &rChar)) {
+				if(jSWTxFramePtr - (uint8_t *) &jSWTxFrame > 10 || rChar == 0x0D) { // If LF
 					bTxFrameReady = true;
 					jSWTxFramePtrShift = 4;
 				} else {
@@ -187,53 +178,38 @@ int main(void)
 				}
 			}
 		}
-		if(bHUReady && bTxFrameReady) {
+		*/
+		
+		/*if(bHUReady && bTxFrameReady) {
 			bTxFrameReady = false;
-			uint8_t len = jSWTxFramePtr - ((uint8_t *) &jSWTxFrame);
-			*jSWTxFramePtr = CalcCRC((uint8_t *) &jSWTxFrame, len);
 			
-			SendFrame((uint8_t *) &jSWTxFrame, len+1);
-			memset(&jSWTxFrame, 0, sizeof(jSWTxFrame));
+			uint8_t len = jSWTxFramePtr - ((uint8_t *) &jSWTxFrame); //Get len
+			*jSWTxFramePtr = CalcCRC((uint8_t *) &jSWTxFrame, len); //Append CRC
+			
+			SendFrame((uint8_t *) &jSWTxFrame, len+1); //Send to J_NET
+			
+			memset(&jSWTxFrame, 0, sizeof(jSWTxFrame)); //Clear
 			jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
 			
 			
-		}
-		
-		HAL_Delay(1000);
-		
-		//*(((uint8_t *) &test) + (uint8_t) test.sz - 2) = *(((uint8_t *) &test) + (uint8_t) test.sz - 2) + 1;
-		//test.d0 = 0x00;
-		//if (test.d1 == 25) test.d1 = 0;
-		//test.d1++;
-		//test.d1 = 0x70;
-		//test.d2++;
-		
-		//test.d1 = 0x43;
-		/*if(test.d1 == 0xff) {
-			test.d0++;
-			test.d1 = 0x00;
-			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-		} else {
-			test.d1++;
-			
 		}*/
-	
-		*(((uint8_t *) &test) + (uint8_t) test.sz - 1) = CalcCRC((uint8_t *) &test, test.sz - 1);
-		//test.sz++;
-		
-		//if(test.sz == 3) test.sz++;
-		
-		
-		
-		/*uint8_t txtLen = 0;
-		for(int i = 0; i < test.sz; i++) {
-			txtLen += sprintf(&usbTransmit[i], "%2X ", *((uint8_t *) &test + i));
-		}
-		txtLen += sprintf(&usbTransmit[txtLen], "\r\n");
-		
-		CDC_Transmit_FS((uint8_t *) usbTransmit, txtLen);*/
-		
-		SendFrame((uint8_t *) &test, test.sz);
+		if(bCDCRxBufferCplt && cbCDCRxBuffer.count) {
+			memset(&jSWTxFrame, 0x00, sizeof(jSWTxFrame));
+			jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
+			
+			while (cbCDCRxBuffer.count) {
+				cbPopFront(&cbCDCRxBuffer, jSWTxFramePtr++);
+				if (!cbCDCRxBuffer.count) bCDCRxBufferCplt = false;
+			}
+			
+			jSWTxFrame.sz = jSWTxFramePtr - ((uint8_t *) &jSWTxFrame);
+			*jSWTxFramePtr = CalcCRC((uint8_t *) &jSWTxFrame, jSWTxFrame.sz);
+			jSWTxFrame.sz++;
+			
+			//SendFrame((uint8_t *) &jSWTxFrame, jSWTxFrame.sz);
+			cbPushBack(&cbSWTxBuffer, (uint8_t *) &jSWTxFrame);
+			
+		} else if (bCDCRxBufferCplt && !cbCDCRxBuffer.count) bCDCRxBufferCplt = false;
   }
   /* USER CODE END 3 */
 

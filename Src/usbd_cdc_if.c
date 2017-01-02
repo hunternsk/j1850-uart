@@ -45,6 +45,7 @@
 #include "usbd_cdc_if.h"
 /* USER CODE BEGIN INCLUDE */
 #include "cb.h"
+#include "stdbool.h"
 /* USER CODE END INCLUDE */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -111,7 +112,8 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
   */ 
   extern USBD_HandleTypeDef hUsbDeviceFS;
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-extern cb cbUSBRxBuffer;
+extern cb cbCDCRxBuffer;
+extern bool bCDCRxBufferCplt; 
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**
@@ -264,8 +266,17 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-	cbPushBack(&cbUSBRxBuffer, Buf);
-	USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+	if(!bCDCRxBufferCplt) {
+		if (*Buf == 0x0D) {
+			bCDCRxBufferCplt = true;
+		} else {
+			cbPushBack(&cbCDCRxBuffer, Buf);
+		}
+	} else {
+		USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+		return (USBD_FAIL);
+	}
+
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
   return (USBD_OK);
   /* USER CODE END 6 */ 
