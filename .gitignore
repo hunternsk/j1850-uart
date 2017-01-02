@@ -1,11 +1,13 @@
 .mxproject
 *.d
 *.o
+*.map
+*.TMP
+*.crf
+*.lst
+*.lnp
+*.axf
 
-MDK-ARM/j1850-uart/j1850-uart.axf
 MDK-ARM/j1850-uart/j1850-uart.build_log.htm
 MDK-ARM/j1850-uart/j1850-uart.htm
-MDK-ARM/j1850-uart/j1850-uart.lnp
-MDK-ARM/j1850-uart/j1850-uart_j1850-uart.dep
-MDK-ARM/startup_stm32f103xb.lst
 
