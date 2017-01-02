@@ -134,6 +134,7 @@ int main(void)
 
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2) != HAL_OK) Error_Handler();
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1) != HAL_OK) Error_Handler();
+	if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) Error_Handler();
 	
 
 	extern bool bHUReady;

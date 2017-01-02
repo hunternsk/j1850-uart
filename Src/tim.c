@@ -158,7 +158,7 @@ void MX_TIM3_Init(void)
   htim3.Init.Prescaler = 71;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = TP9_MIN;
-  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV2;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
     Error_Handler();
@@ -325,7 +325,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				bHUReady = true;
 			}*/
 			if(cbSWTxBuffer.count) {
-				DBLINK();
 				cbPopFront(&cbSWTxBuffer, (uint8_t *) &outFrame);
 				SendFrame((uint8_t *) &outFrame, outFrame.sz);
 			}
