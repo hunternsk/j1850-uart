@@ -60,26 +60,21 @@ extern void cbFree(cb *cb);
 extern void cbPushBack(cb *cb, const uint8_t * item);
 extern int cbPopFront(cb *cb, uint8_t * item);
 
-
-extern cb cbSWRxBuffer;
-extern cb cbSWTxBuffer;
+extern cb cbJNetRxBuffer;
+extern cb cbJNetTxBuffer;
 
 #define DEBUG 1
 #define DEBUG_GPIO_PERIPHERAL GPIOB
 #define DEBUG_GPIO_PIN GPIO_PIN_3
 
-#define BIT_BAND_SRAM(RAM,BIT) (*(volatile uint32_t*)(SRAM_BB_BASE + 32 * ((uint32_t)((void*)(RAM))-SRAM_BASE) + 4 * ((uint32_t)(BIT))))
-
-#define TIM2CLK 72
+#define BIT_BAND_SRAM(RAM,BIT) (*(volatile uint32_t*)(SRAM_BB_BASE + 32 * ((uint32_t)((void*)(RAM)) - SRAM_BASE) + 4 * ((uint32_t)(BIT))))
 
 void DSET(void);
 void DRESET(void);
 void DBLINK(void);
 
-int SendBytes(uint8_t * buf, uint8_t len);
-int SendFrame(uint8_t * buf, uint8_t len);
-int SendSOF(void);
-int GenerateHUFrame(uint8_t * out, uint8_t * data, uint8_t len);
+void jNetSendBytes(uint8_t * buf, uint8_t len);
+void jNetSendFrame(uint8_t * buf, uint8_t len);
 
 /* USER CODE END 0 */
 
@@ -157,7 +152,7 @@ void MX_TIM3_Init(void)
   htim3.Instance = TIM3;
   htim3.Init.Prescaler = 71;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = TP9_MIN;
+  htim3.Init.Period = 86;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
@@ -275,59 +270,43 @@ struct JFrame outFrame;
 uint8_t * inFramePtr = (uint8_t *) &inFrame;
 uint8_t * outFramePtr = (uint8_t *) &outFrame;
 
-bool bFrame = false;
+bool bFrameRx = false;
 bool bFrameTx = false;
-bool bHUReady = false;
 
 uint8_t inFrameBit = 7;
 
-uint8_t inFrameLen = 0;
-uint8_t outFrameLen = 0;
-
-
-
-uint8_t huInitRequest[] = {0x24, 0x05, 0x01};
-uint8_t huInitResponse[] = {0x00, 0x25};
-
-uint8_t huResponseHeaders[] = {0x64, SWID, MYID};
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM3) {
-		if (!htim->Instance->CNT && htim->Instance->ARR == TP7_MIN && bFrame) { // EOD detection
-			inFrameLen = inFramePtr - (uint8_t *) &inFrame;
+		if (!htim->Instance->CNT && htim->Instance->ARR == TP7_MIN && bFrameRx) { // EOD detection
+			uint8_t inFrameLen = inFramePtr - (uint8_t *) &inFrame;
+			
 			// calc CRC is OK
 			if (*(inFramePtr - 1) == CalcCRC((uint8_t *) &inFrame, inFrameLen - 1)) {
-
-				cbPushBack(&cbSWRxBuffer,(uint8_t *) &inFrame);
+				inFrame.sz = inFrameLen <= 11 ? inFrameLen : 11;
+				cbPushBack(&cbJNetRxBuffer,(uint8_t *) &inFrame);
 				
 				if (AUTOIFR
 					&& (!BIT_BAND_SRAM((uint8_t *) &inFrame, 4)) // Three bytes hdr
 					&& inFrame.dst == MYID 
 					&& inFrame.src == SWID
-					//&& memcmp((uint8_t *) &inFrame.d0, &huInitRequest, sizeof(huInitRequest))
 				) {
 					uint8_t ifr = MYID;
-					SendBytes(&ifr, sizeof(ifr));
+					jNetSendBytes(&ifr, sizeof(ifr));
 
 					htim3.Instance->CNT = 0;
 					htim3.Instance->ARR = TP9_MIN;
 					HAL_TIM_Base_Start_IT(&htim3);
-					
-					//outFrameLen = GenerateHUFrame((uint8_t *) &outFrame, huInitResponse, sizeof(huInitResponse));
-			
 				}
 			}
-			bFrame = false;
-		} else if (!htim->Instance->CNT && htim->Instance->ARR == TP9_MIN) {
+			bFrameRx = false;
+		} else if (!bFrameRx && !htim->Instance->CNT && htim->Instance->ARR == TP9_MIN) {
 			HAL_TIM_Base_Stop_IT(&htim3);
-			/*if (!bHUReady) {
-				SendFrame((uint8_t *) &outFrame, outFrameLen);
-				bHUReady = true;
-			}*/
-			if(cbSWTxBuffer.count) {
-				cbPopFront(&cbSWTxBuffer, (uint8_t *) &outFrame);
-				SendFrame((uint8_t *) &outFrame, outFrame.sz);
+
+			if(cbJNetTxBuffer.count) {
+				cbPopFront(&cbJNetTxBuffer, (uint8_t *) &outFrame);
+				jNetSendFrame((uint8_t *) &outFrame, outFrame.sz);
 			}
+
 			HAL_TIM_Base_Start_IT(&htim3);
 		}
 	}
@@ -338,14 +317,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 		if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2) { // RISING
 			uint16_t ucFall = htim->Instance->CCR1 / TIM2CLK;
 			uint16_t ucRise = htim->Instance->CCR2 / TIM2CLK;
-			
-	
+
 			// Detect SOF
 			if(ucFall >= TP4_MIN && ucRise <= TP5_MAX && ucRise >= TP5_MIN && ucFall <= TP4_MAX) {
-				bFrame = true;
+				bFrameRx = true;
 				memset(&inFrame, 0x00, sizeof(inFrame));
-				memset(&outFrame, 0x00, sizeof(outFrame));
-				outFrameLen = 0;
 				
 				inFramePtr = (uint8_t *) &inFrame;
 				inFrameBit = 7;
@@ -357,11 +333,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 				HAL_TIM_Base_Start_IT(&htim3);
 			}
 			
-			if(bFrame) {
+			if(bFrameRx) {
 				if(ucRise <= TP1_MAX) { // Got bit's rise
 					htim3.Instance->CNT = 0;
 				} else if(ucRise >= TP7_MAX && ucRise <= TP8_MAX) { //Got pulse beetween EOD and EOF - stop frame write
-					bFrame = false;
+					bFrameRx = false;
 				}
 			}
 		}
@@ -371,7 +347,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 			uint16_t ucRise = htim->Instance->CCR1 / TIM2CLK;
 			
 
-			if(bFrame) {
+			if(bFrameRx) {
 				if(ucRise <= TP3_MAX && ucFall >= TP2_MIN) {
 					if(ucRise <= TP2_MAX) BIT_BAND_SRAM(inFramePtr, inFrameBit) = 0x01;
 					else if(ucFall >= TP3_MIN) BIT_BAND_SRAM(inFramePtr, inFrameBit) = 0x00;
@@ -381,8 +357,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 						inFrameBit = 7;
 					} else inFrameBit--;
 				}
-			}
-			
+			}	
 		}
 	}
 }
@@ -394,6 +369,7 @@ void DRESET(void) {
 	if (DEBUG) HAL_GPIO_WritePin(DEBUG_GPIO_PERIPHERAL, DEBUG_GPIO_PIN, GPIO_PIN_RESET);
 }
 void DBLINK(void) {
+	
 		if (DEBUG) {
 			HAL_GPIO_WritePin(DEBUG_GPIO_PERIPHERAL, DEBUG_GPIO_PIN, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(DEBUG_GPIO_PERIPHERAL, DEBUG_GPIO_PIN, GPIO_PIN_RESET);
@@ -401,19 +377,18 @@ void DBLINK(void) {
 }
 
 
-int SendBytes(uint8_t * buf, uint8_t len) {
+void jNetSendBytes(uint8_t * buf, uint8_t len) {
 	const uint8_t * ptr = buf;
 	uint8_t ucPulseDominantTime;
+	
 	while(len--) {
 		int i = 8;
 		uint8_t val = *(ptr++);
+		
 		while(i--) {
 			
-			if(val & (1 << i)) {
-				ucPulseDominantTime = TP2_MIN; //bit 1
-			} else {
-				ucPulseDominantTime = TP3_MIN; //bit 0
-			}
+			if(val & (1 << i)) ucPulseDominantTime = TP2_MIN; //bit 1
+			else ucPulseDominantTime = TP3_MIN; //bit 0
 			
 			//Dominant
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
@@ -433,11 +408,9 @@ int SendBytes(uint8_t * buf, uint8_t len) {
 	}
 	
 	htim3.Instance->ARR = TP9_MIN;
-	
-	return 1;
 }
 
-int SendFrame(uint8_t * buf, uint8_t len) {
+void jNetSendFrame(uint8_t * buf, uint8_t len) {
 	bool _htim_it = false;
 	
 	if (htim3.Instance->DIER & (1 << TIM_IT_UPDATE)) {
@@ -445,21 +418,12 @@ int SendFrame(uint8_t * buf, uint8_t len) {
 		_htim_it = true;
 	}
 	bFrameTx = true;
-	SendSOF();
-	SendBytes(buf, len);
 	
-	if (_htim_it) __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
-	bFrameTx = false;
-	return 1;
-}
-
-int SendSOF() {
-
 	// SOF Dominant
 	htim3.Instance->ARR = TP4_NOM; 
 	
-	GPIOB->BSRR = GPIO_PIN_10;
-	GPIOB->BSRR = GPIO_PIN_11;
+	GPIOB->BSRR = GPIO_PIN_10; //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
+	GPIOB->BSRR = GPIO_PIN_11; //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
 	HAL_TIM_Base_Start(&htim3);
 	while ((TIM3->CR1 & TIM_CR1_CEN) != 0) {}
 
@@ -471,26 +435,11 @@ int SendSOF() {
 	while ((TIM3->CR1 & TIM_CR1_CEN) != 0) {}
 
 	TIM3->ARR = TP9_MIN;
-		
-	return 1;
-}
-
-int GenerateHUFrame(uint8_t * out, uint8_t * data, uint8_t dataLen) {
-	uint8_t * outPtr = out;
-	uint8_t outLen = 0;
-	uint8_t headersLen = sizeof(huResponseHeaders) / sizeof *huResponseHeaders;
 	
-	memcpy(outPtr, &huResponseHeaders, headersLen);
-	outPtr += headersLen;
-				
-	memcpy(outPtr, data, dataLen);
-	outPtr += dataLen;
-
-	outLen = (outPtr - out);
+	jNetSendBytes(buf, len);
 	
-	*outPtr = CalcCRC(out, outLen );
-			
-	return outLen + 1;
+	if (_htim_it) __HAL_TIM_ENABLE_IT(&htim3, TIM_IT_UPDATE);
+	bFrameTx = false;
 }
 
 /* USER CODE END 1 */

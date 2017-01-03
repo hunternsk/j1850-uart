@@ -70,8 +70,8 @@
 char usbTransmit[1024];
 
 uint8_t crcTable[256];
-cb cbSWRxBuffer;
-cb cbSWTxBuffer;
+cb cbJNetRxBuffer;
+cb cbJNetTxBuffer;
 
 cb cbCDCRxBuffer;
 bool bCDCRxBufferCplt;
@@ -124,22 +124,18 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	CRCInit();
 
-	cbInit(&cbSWRxBuffer , 16, sizeof(jFrame));
-	cbInit(&cbSWTxBuffer , 16, sizeof(jFrame));
+	cbInit(&cbJNetRxBuffer , 16, sizeof(jFrame));
+	cbInit(&cbJNetTxBuffer , 16, sizeof(jFrame));
 	cbInit(&cbCDCRxBuffer, 256, sizeof(uint8_t));
 	
-	struct JFrame jSWRxFrame = {0};
-	struct JFrame jSWTxFrame = {0};
-	uint8_t * jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
+	struct JFrame jNetRxFrame = {0};
+	struct JFrame jNetTxFrame = {0};
+	uint8_t * jNetTxFramePtr = (uint8_t *) &jNetTxFrame;
 
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2) != HAL_OK) Error_Handler();
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1) != HAL_OK) Error_Handler();
 	if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) Error_Handler();
 	
-
-	extern bool bHUReady;
-	
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -153,62 +149,31 @@ int main(void)
 		* If something received ftom J_NET 
 		* Pop frame from CB to CDC
 		*/ 
-		if(cbSWRxBuffer.count) {
-			if (cbPopFront(&cbSWRxBuffer, (uint8_t *) &jSWRxFrame)) {
-				CDC_Transmit_FS((uint8_t *) &jSWRxFrame, 11); //TODO: jSWRxFrame.sz
+		if(cbJNetRxBuffer.count) {
+			if (cbPopFront(&cbJNetRxBuffer, (uint8_t *) &jNetRxFrame)) {
+				//CDC_Transmit_FS((uint8_t *) &jNetRxFrame, jNetRxFrame.sz); 
+				CDC_Transmit_FS((uint8_t *) &jNetRxFrame, 11);
 			}
 		}
-		
-		
-		
-		/*if(!bTxFrameReady && cbCDCRxBuffer.count) { 
-			uint8_t rChar;
-			if(cbPopFront(&cbCDCRxBuffer,(uint8_t *) &rChar)) {
-				if(jSWTxFramePtr - (uint8_t *) &jSWTxFrame > 10 || rChar == 0x0D) { // If LF
-					bTxFrameReady = true;
-					jSWTxFramePtrShift = 4;
-				} else {
-					unsigned short tmpByte = 0;
-					sscanf((const char *) &rChar, "%hx", &tmpByte);
-					*jSWTxFramePtr |= tmpByte << jSWTxFramePtrShift;
-					
-					if(!jSWTxFramePtrShift) {
-						jSWTxFramePtrShift = 4;
-						jSWTxFramePtr++;
-					} else jSWTxFramePtrShift = 0;
-				}
-			}
-		}
+
+		/*
+		* Receive frame from CDC and push to JNetBuffer
 		*/
 		
-		/*if(bHUReady && bTxFrameReady) {
-			bTxFrameReady = false;
-			
-			uint8_t len = jSWTxFramePtr - ((uint8_t *) &jSWTxFrame); //Get len
-			*jSWTxFramePtr = CalcCRC((uint8_t *) &jSWTxFrame, len); //Append CRC
-			
-			SendFrame((uint8_t *) &jSWTxFrame, len+1); //Send to J_NET
-			
-			memset(&jSWTxFrame, 0, sizeof(jSWTxFrame)); //Clear
-			jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
-			
-			
-		}*/
 		if(bCDCRxBufferCplt && cbCDCRxBuffer.count) {
-			memset(&jSWTxFrame, 0x00, sizeof(jSWTxFrame));
-			jSWTxFramePtr = (uint8_t *) &jSWTxFrame;
+			memset(&jNetTxFrame, 0x00, sizeof(jNetTxFrame));
+			jNetTxFramePtr = (uint8_t *) &jNetTxFrame;
 			
 			while (cbCDCRxBuffer.count) {
-				cbPopFront(&cbCDCRxBuffer, jSWTxFramePtr++);
+				cbPopFront(&cbCDCRxBuffer, jNetTxFramePtr++);
 				if (!cbCDCRxBuffer.count) bCDCRxBufferCplt = false;
 			}
 			
-			jSWTxFrame.sz = jSWTxFramePtr - ((uint8_t *) &jSWTxFrame);
-			*jSWTxFramePtr = CalcCRC((uint8_t *) &jSWTxFrame, jSWTxFrame.sz);
-			jSWTxFrame.sz++;
-			
-			//SendFrame((uint8_t *) &jSWTxFrame, jSWTxFrame.sz);
-			cbPushBack(&cbSWTxBuffer, (uint8_t *) &jSWTxFrame);
+			jNetTxFrame.sz = jNetTxFramePtr - ((uint8_t *) &jNetTxFrame);
+			*jNetTxFramePtr = CalcCRC((uint8_t *) &jNetTxFrame, jNetTxFrame.sz);
+			jNetTxFrame.sz++;
+
+			cbPushBack(&cbJNetTxBuffer, (uint8_t *) &jNetTxFrame);
 			
 		} else if (bCDCRxBufferCplt && !cbCDCRxBuffer.count) bCDCRxBufferCplt = false;
   }
