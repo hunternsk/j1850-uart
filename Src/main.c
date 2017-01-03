@@ -65,10 +65,6 @@
 #define DEBUG_GPIO_PERIPHERAL GPIOE
 #define DEBUG_GPIO_PIN GPIO_PIN_6
 
-#define MAXFRAMES 255
-
-char usbTransmit[1024];
-
 uint8_t crcTable[256];
 cb cbJNetRxBuffer;
 cb cbJNetTxBuffer;
@@ -90,7 +86,6 @@ void cbInit(cb *cb, size_t capacity, size_t sz);
 void cbFree(cb *cb);
 void cbPushBack(cb *cb, const uint8_t * item);
 int cbPopFront(cb *cb, uint8_t * item);
-extern int SendFrame(uint8_t * buf, uint8_t len);
 
 /* Private function prototypes -----------------------------------------------*/
 
