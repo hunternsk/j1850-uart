@@ -288,7 +288,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 				if (AUTOIFR
 					&& (!BIT_BAND_SRAM((uint8_t *) &inFrame, 4)) // Three bytes hdr
 					&& inFrame.dst == MYID 
-					&& inFrame.src == SWID
 				) {
 					uint8_t ifr = MYID;
 					jNetSendBytes(&ifr, sizeof(ifr));

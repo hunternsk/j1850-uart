@@ -52,7 +52,6 @@
 #include "stdbool.h"
 #include "usbd_cdc_if.h"
 #include "jnet.h"
-#include "sw_btn.h"
 #include "cb.h"
 
 /* USER CODE END Includes */
