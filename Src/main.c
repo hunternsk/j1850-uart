@@ -146,7 +146,9 @@ int main(void)
 		if(cbJNetRxBuffer.count) {
 			if (cbPopFront(&cbJNetRxBuffer, (uint8_t *) &jNetRxFrame)) {
 				//CDC_Transmit_FS((uint8_t *) &jNetRxFrame, jNetRxFrame.sz); 
+				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 				CDC_Transmit_FS((uint8_t *) &jNetRxFrame, 11);
+				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 			}
 		}
 
