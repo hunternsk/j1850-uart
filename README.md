@@ -3,7 +3,7 @@ J1850PWM to CDC/UART adapter based on STM32
 
 Simple tool for communicating with J1850 PWM bus (MSM6636/MSM6636B) using interrupts.
 
-This bus commonly used in Nissan and Infinity cars for Xanavi/Clarion multimedia and wheel buttons.
+This bus commonly used in Nissan and Infinity cars for Xanavi/Clarion multimedia, steering wheel buttons and dash monitor control.
 
 Used STM32F103C8T6 chip's two hardware timers:
 * TIM2 PWM Capture - JNet SOF & Bits reading
@@ -12,17 +12,21 @@ Used STM32F103C8T6 chip's two hardware timers:
 DONE:
 * JNET
  * Detect SOF, EOF.
- * Read from JNet (CRC Fast checked).
- * Make IFR after EOD if enabled (config.h).
+ * Read from JNet (CRC Fast checked w/pre generated table).
+ * Make IFR after EOD if enabled (AUTOIFR in config.h).
  * Write to JNet.
 * CDC
- * Send 11 byte right filled with 0x00 packets to CDC
+ * Send up to 11 bytes right filled with 0x00 packets to CDC
  * Read packets from CDC (CR is terminator)
 
 WIP: 
  * Documentation (Build, Schematic, PCB)
  * JNet from/to UART
+
+BUILD:
+ * Need STM32CUBEF1 library (tested with v1.6.0) - place Drivers and Middlewares in project dir.
  
+
 WONTFIX:
  Collision detection
  
