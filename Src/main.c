@@ -3,6 +3,11 @@
   * File Name          : main.c
   * Description        : Main program body
   ******************************************************************************
+  * This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.
@@ -76,7 +81,6 @@ bool bCDCRxBufferCplt;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void Error_Handler(void);
 
 /* USER CODE BEGIN PFP */
 uint8_t CalcCRC(uint8_t * buf, uint8_t len);
@@ -105,8 +109,16 @@ int main(void)
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
   /* Configure the system clock */
   SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -125,7 +137,7 @@ int main(void)
 	struct JFrame jNetRxFrame = {0};
 	struct JFrame jNetTxFrame = {0};
 	uint8_t * jNetTxFramePtr = (uint8_t *) &jNetTxFrame;
-
+	
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2) != HAL_OK) Error_Handler();
 	if(HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1) != HAL_OK) Error_Handler();
 	if(HAL_TIM_Base_Start_IT(&htim3) != HAL_OK) Error_Handler();
@@ -145,10 +157,7 @@ int main(void)
 		*/ 
 		if(cbJNetRxBuffer.count) {
 			if (cbPopFront(&cbJNetRxBuffer, (uint8_t *) &jNetRxFrame)) {
-				//CDC_Transmit_FS((uint8_t *) &jNetRxFrame, jNetRxFrame.sz); 
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-				CDC_Transmit_FS((uint8_t *) &jNetRxFrame, 11);
-				HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+				CDC_Transmit_FS((uint8_t *) &jNetRxFrame, jNetRxFrame.sz + 1); 
 			}
 		}
 
@@ -158,7 +167,7 @@ int main(void)
 		
 		if(bCDCRxBufferCplt && cbCDCRxBuffer.count) {
 			memset(&jNetTxFrame, 0x00, sizeof(jNetTxFrame));
-			jNetTxFramePtr = (uint8_t *) &jNetTxFrame;
+			jNetTxFramePtr = (uint8_t *) &jNetTxFrame.jFrameRaw;
 			
 			while (cbCDCRxBuffer.count) {
 				cbPopFront(&cbCDCRxBuffer, jNetTxFramePtr++);
@@ -197,7 +206,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Initializes the CPU, AHB and APB busses clocks 
@@ -211,14 +220,14 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USB;
   PeriphClkInit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
     /**Enables the Clock Security System 
@@ -305,14 +314,14 @@ int cbPopFront(cb *cb, uint8_t * item) {
   * @param  None
   * @retval None
   */
-void Error_Handler(void)
+void _Error_Handler(char * file, int line)
 {
-  /* USER CODE BEGIN Error_Handler */
+  /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   while(1) 
   {
   }
-  /* USER CODE END Error_Handler */ 
+  /* USER CODE END Error_Handler_Debug */ 
 }
 
 #ifdef USE_FULL_ASSERT

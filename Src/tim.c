@@ -4,6 +4,11 @@
   * Description        : This file provides code for the configuration
   *                      of the TIM instances.
   ******************************************************************************
+  * This notice applies to any and all portions of this file
+  * that are not between comment pairs USER CODE BEGIN and
+  * USER CODE END. Other portions of this file, whether 
+  * inserted by the user or by software development tools
+  * are owned by their respective copyright owners.
   *
   * Copyright (c) 2017 STMicroelectronics International N.V. 
   * All rights reserved.
@@ -94,20 +99,21 @@ void MX_TIM2_Init(void)
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 0xFFFF;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   if (HAL_TIM_IC_Init(&htim2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
@@ -116,14 +122,14 @@ void MX_TIM2_Init(void)
   sSlaveConfig.TriggerFilter = 0;
   if (HAL_TIM_SlaveConfigSynchronization(&htim2, &sSlaveConfig) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
@@ -132,14 +138,14 @@ void MX_TIM2_Init(void)
   sConfigIC.ICFilter = 0;
   if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
   sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
   if (HAL_TIM_IC_ConfigChannel(&htim2, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
 }
@@ -154,27 +160,28 @@ void MX_TIM3_Init(void)
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 86;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
   if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   if (HAL_TIM_OnePulse_Init(&htim3, TIM_OPMODE_SINGLE) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
 }
@@ -188,7 +195,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
   /* USER CODE BEGIN TIM2_MspInit 0 */
 
   /* USER CODE END TIM2_MspInit 0 */
-    /* Peripheral clock enable */
+    /* TIM2 clock enable */
     __HAL_RCC_TIM2_CLK_ENABLE();
   
     /**TIM2 GPIO Configuration    
@@ -199,7 +206,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /* Peripheral interrupt init */
+    /* TIM2 interrupt Init */
     HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* USER CODE BEGIN TIM2_MspInit 1 */
@@ -211,10 +218,10 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
   /* USER CODE BEGIN TIM3_MspInit 0 */
 
   /* USER CODE END TIM3_MspInit 0 */
-    /* Peripheral clock enable */
+    /* TIM3 clock enable */
     __HAL_RCC_TIM3_CLK_ENABLE();
 
-    /* Peripheral interrupt init */
+    /* TIM3 interrupt Init */
     HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(TIM3_IRQn);
   /* USER CODE BEGIN TIM3_MspInit 1 */
@@ -239,9 +246,8 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
     */
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_1);
 
-    /* Peripheral interrupt Deinit*/
+    /* TIM2 interrupt Deinit */
     HAL_NVIC_DisableIRQ(TIM2_IRQn);
-
   /* USER CODE BEGIN TIM2_MspDeInit 1 */
 
   /* USER CODE END TIM2_MspDeInit 1 */
@@ -254,9 +260,8 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
     /* Peripheral clock disable */
     __HAL_RCC_TIM3_CLK_DISABLE();
 
-    /* Peripheral interrupt Deinit*/
+    /* TIM3 interrupt Deinit */
     HAL_NVIC_DisableIRQ(TIM3_IRQn);
-
   /* USER CODE BEGIN TIM3_MspDeInit 1 */
 
   /* USER CODE END TIM3_MspDeInit 1 */
@@ -267,8 +272,8 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 
 struct JFrame inFrame;
 struct JFrame outFrame;
-uint8_t * inFramePtr = (uint8_t *) &inFrame;
-uint8_t * outFramePtr = (uint8_t *) &outFrame;
+uint8_t * inFramePtr = (uint8_t *) &inFrame.jFrameRaw;
+uint8_t * outFramePtr = (uint8_t *) &outFrame.jFrameRaw;
 
 bool bFrameRx = false;
 bool bFrameTx = false;
@@ -278,16 +283,15 @@ uint8_t inFrameBit = 7;
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == TIM3) {
 		if (!htim->Instance->CNT && htim->Instance->ARR == TP7_MIN && bFrameRx) { // EOD detection
-			uint8_t inFrameLen = inFramePtr - (uint8_t *) &inFrame;
 			
 			// calc CRC is OK
-			if (*(inFramePtr - 1) == CalcCRC((uint8_t *) &inFrame, inFrameLen - 1)) {
-				inFrame.sz = inFrameLen <= 11 ? inFrameLen : 11;
+			if (*(inFramePtr - 1) == CalcCRC((uint8_t *) &inFrame.jFrameRaw, inFrame.sz - 1)) {
+				inFrame.sz = inFrame.sz <= 11 ? inFrame.sz : 11;
 				cbPushBack(&cbJNetRxBuffer,(uint8_t *) &inFrame);
 				
 				if (AUTOIFR
-					&& (!BIT_BAND_SRAM((uint8_t *) &inFrame, 4)) // Three bytes hdr
-					&& inFrame.dst == MYID 
+					&& (!BIT_BAND_SRAM((uint8_t *) &inFrame.jFrameRaw, 4)) // Three bytes hdr
+					&& inFrame.jFrameRaw.dst == MYID 
 				) {
 					uint8_t ifr = MYID;
 					jNetSendBytes(&ifr, sizeof(ifr));
@@ -322,7 +326,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 				bFrameRx = true;
 				memset(&inFrame, 0x00, sizeof(inFrame));
 				
-				inFramePtr = (uint8_t *) &inFrame;
+				inFramePtr = (uint8_t *) &inFrame.jFrameRaw;
 				inFrameBit = 7;
 				
 				// TIM3 timeout is EOD
@@ -345,15 +349,15 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 			uint16_t ucFall = htim->Instance->CCR2 / TIM2CLK;
 			uint16_t ucRise = htim->Instance->CCR1 / TIM2CLK;
 			
-
 			if(bFrameRx) {
 				if(ucRise <= TP3_MAX && ucFall >= TP2_MIN) {
 					if(ucRise <= TP2_MAX) BIT_BAND_SRAM(inFramePtr, inFrameBit) = 0x01;
 					else if(ucFall >= TP3_MIN) BIT_BAND_SRAM(inFramePtr, inFrameBit) = 0x00;
-					
+
 					if (!inFrameBit) {
 						inFramePtr++;
 						inFrameBit = 7;
+						inFrame.sz++;
 					} else inFrameBit--;
 				}
 			}	
@@ -389,7 +393,7 @@ void jNetSendBytes(uint8_t * buf, uint8_t len) {
 			if(val & (1 << i)) ucPulseDominantTime = TP2_MIN; //bit 1
 			else ucPulseDominantTime = TP3_MIN; //bit 0
 			
-			//Dominant
+			// Dominant
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_SET);
 			
@@ -397,6 +401,7 @@ void jNetSendBytes(uint8_t * buf, uint8_t len) {
 			HAL_TIM_Base_Start(&htim3);
 			while ((TIM3->CR1 & TIM_CR1_CEN) != 0){}
 			
+			// Passive
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, GPIO_PIN_RESET);
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, GPIO_PIN_RESET);
 			

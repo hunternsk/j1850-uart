@@ -7,7 +7,14 @@
 *.lst
 *.lnp
 *.axf
+*.Inp
+*.tra
+*.dep
+*.__i
+*.bak
+*.Vishwas
 
 MDK-ARM/j1850-uart/j1850-uart.build_log.htm
 MDK-ARM/j1850-uart/j1850-uart.htm
-
+Drivers
+Middlewares

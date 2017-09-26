@@ -43,7 +43,7 @@
 #define TP10_MAX 15
 
 // J1850 Frame 
-typedef struct JFrame {
+typedef struct JFrameRaw {
 	uint8_t hdr;
 	uint8_t dst;
 	uint8_t src;
@@ -55,5 +55,9 @@ typedef struct JFrame {
 	uint8_t d5;
 	uint8_t d6;
 	uint8_t d7;
+} jFrameRaw;
+
+typedef struct JFrame {
 	uint8_t sz;
+	jFrameRaw jFrameRaw;
 } jFrame;
