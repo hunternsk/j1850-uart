@@ -26,6 +26,8 @@ WIP:
 BUILD:
  * Need STM32CUBEF1 library (tested with v1.6.0) - place Drivers and Middlewares in project dir.
  
+USAGE:
+ * Nissan Gloria ENY34: https://www.drive2.ru/l/463617875018515146/
 
 WONTFIX:
  Collision detection
